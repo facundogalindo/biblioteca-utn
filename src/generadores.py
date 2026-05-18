@@ -3,14 +3,6 @@ import math
 
 
 def generar_tipo_tramite(parametros):
-    """
-    Determina qué trámite viene a hacer la persona.
-
-    Probabilidades parametrizables:
-    - préstamo
-    - devolución
-    - consulta
-    """
     rnd = random.random()
 
     prob_prestamo = parametros["prob_prestamo"]
@@ -26,10 +18,6 @@ def generar_tipo_tramite(parametros):
 
 
 def generar_tiempo_consulta(parametros):
-    """
-    Tiempo de consulta: U(a, b)
-    Fórmula: a + RND * (b - a)
-    """
     rnd = random.random()
 
     minimo = parametros["consulta_min"]
@@ -41,10 +29,6 @@ def generar_tiempo_consulta(parametros):
 
 
 def generar_tiempo_prestamo(parametros):
-    """
-    Tiempo de préstamo: exponencial negativa.
-    Fórmula: -media * ln(1 - RND)
-    """
     rnd = random.random()
 
     media = parametros["media_prestamo"]
@@ -54,10 +38,6 @@ def generar_tiempo_prestamo(parametros):
 
 
 def generar_tiempo_devolucion(parametros):
-    """
-    Tiempo de devolución: U(a, b)
-    Fórmula: a + RND * (b - a)
-    """
     rnd = random.random()
 
     minimo = parametros["devolucion_min"]
@@ -69,11 +49,6 @@ def generar_tiempo_devolucion(parametros):
 
 
 def generar_decision_post_prestamo(parametros):
-    """
-    Luego del préstamo:
-    - se retira
-    - lee en sala
-    """
     rnd = random.random()
 
     prob_se_retira = parametros["prob_se_retira"]
@@ -85,10 +60,6 @@ def generar_decision_post_prestamo(parametros):
 
 
 def generar_tiempo_lectura(parametros):
-    """
-    Tiempo de lectura: exponencial negativa.
-    Fórmula: -media * ln(1 - RND)
-    """
     rnd = random.random()
 
     media = parametros["media_lectura"]

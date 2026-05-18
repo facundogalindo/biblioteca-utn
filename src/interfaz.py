@@ -4,15 +4,18 @@ import pandas as pd
 
 from simulador import SimuladorBiblioteca
 from parametros import PARAMETROS_DEFAULT
+from exportador import exportar_a_excel
 
 
 class InterfazBiblioteca:
     def __init__(self, root):
         self.root = root
         self.root.title("TP4 - Simulación Biblioteca UTN")
-        self.root.geometry("1400x750")
+        self.root.geometry("1450x780")
 
-        self.df_vector = pd.DataFrame()
+        self.df_vector_completo = pd.DataFrame()
+        self.df_vector_mostrado = pd.DataFrame()
+        self.ultimo_resultado = {}
         self.entries = {}
 
         self.crear_widgets()
@@ -35,6 +38,13 @@ class InterfazBiblioteca:
             command=self.ejecutar_simulacion
         )
         self.btn_simular.pack(side="left", padx=5)
+
+        self.btn_exportar = ttk.Button(
+            frame_botones,
+            text="Exportar a Excel",
+            command=self.exportar_excel
+        )
+        self.btn_exportar.pack(side="left", padx=5)
 
         frame_resultados = ttk.LabelFrame(frame_principal, text="Resultados")
         frame_resultados.pack(fill="x", padx=10, pady=5)
@@ -176,12 +186,13 @@ class InterfazBiblioteca:
             simulador = SimuladorBiblioteca(parametros=parametros)
             vector_estado = simulador.simular()
 
-            df_completo = pd.DataFrame(vector_estado)
+            self.df_vector_completo = pd.DataFrame(vector_estado)
+            self.df_vector_mostrado = self.filtrar_vector_estado(self.df_vector_completo, parametros)
 
-            self.df_vector = self.filtrar_vector_estado(df_completo, parametros)
+            self.ultimo_resultado = self.calcular_resultados(simulador, parametros)
 
-            self.cargar_tabla(self.df_vector)
-            self.mostrar_resultados(simulador)
+            self.cargar_tabla(self.df_vector_mostrado)
+            self.mostrar_resultados(self.ultimo_resultado)
 
         except ValueError as error:
             messagebox.showerror("Error de parámetros", str(error))
@@ -204,59 +215,7 @@ class InterfazBiblioteca:
 
         return df_filtrado
 
-    def cargar_tabla(self, df):
-        self.tabla.delete(*self.tabla.get_children())
-        self.tabla["columns"] = list(df.columns)
-
-        anchos_columnas = {
-            "fila": 60,
-            "evento": 210,
-            "reloj": 80,
-
-            "rnd_tipo_tramite": 130,
-            "tipo_tramite": 120,
-            "tiempo_entre_llegadas": 160,
-            "proxima_llegada": 140,
-
-            "rnd_atencion": 120,
-            "tiempo_atencion": 140,
-            "fin_atencion(1)": 140,
-            "fin_atencion(2)": 140,
-            "proximo_fin_lectura": 160,
-
-            "empleado(1)_estado": 160,
-            "empleado(2)_estado": 160,
-            "cola": 80,
-
-            "cantidad_personas": 150,
-            "estado_biblioteca": 150,
-
-            "personas_retiradas": 160,
-            "promedio_permanencia": 180,
-            "ac_ocio_empleado_1": 180,
-            "ac_ocio_empleado_2": 180,
-
-            "persona(1)_estado": 160,
-            "persona(1)_hora_inicio": 170,
-            "persona(2)_estado": 160,
-            "persona(2)_hora_inicio": 170,
-
-            "rnd_decision_post_prestamo": 210,
-            "decision_post_prestamo": 190,
-            "rnd_tiempo_lectura": 170,
-            "tiempo_lectura": 140,
-        }
-
-        for columna in df.columns:
-            self.tabla.heading(columna, text=columna)
-            ancho = anchos_columnas.get(columna, 140)
-            self.tabla.column(columna, width=ancho, anchor="center", stretch=False)
-
-        for _, fila in df.iterrows():
-            valores = [fila[columna] for columna in df.columns]
-            self.tabla.insert("", "end", values=valores)
-
-    def mostrar_resultados(self, simulador):
+    def calcular_resultados(self, simulador, parametros):
         if simulador.cant_personas_retiradas > 0:
             promedio_permanencia = (
                 simulador.acum_permanencia / simulador.cant_personas_retiradas
@@ -264,11 +223,87 @@ class InterfazBiblioteca:
         else:
             promedio_permanencia = 0
 
+        tiempo_total = parametros["tiempo_maximo"]
+
+        porcentaje_ocio_emp_1 = 0
+        porcentaje_ocio_emp_2 = 0
+
+        if tiempo_total > 0:
+            porcentaje_ocio_emp_1 = simulador.empleado_1.tiempo_ocioso_acumulado / tiempo_total * 100
+            porcentaje_ocio_emp_2 = simulador.empleado_2.tiempo_ocioso_acumulado / tiempo_total * 100
+
+        return {
+            "personas_retiradas": simulador.cant_personas_retiradas,
+            "promedio_permanencia": round(promedio_permanencia, 2),
+            "tiempo_ocioso_empleado_1": round(simulador.empleado_1.tiempo_ocioso_acumulado, 2),
+            "tiempo_ocioso_empleado_2": round(simulador.empleado_2.tiempo_ocioso_acumulado, 2),
+            "porcentaje_ocio_empleado_1": round(porcentaje_ocio_emp_1, 2),
+            "porcentaje_ocio_empleado_2": round(porcentaje_ocio_emp_2, 2),
+        }
+
+    def cargar_tabla(self, df):
+        self.tabla.delete(*self.tabla.get_children())
+        self.tabla["columns"] = list(df.columns)
+
+        anchos_columnas = {
+            "fila": 60,
+            "evento": 220,
+            "reloj": 80,
+            "rnd_tipo_tramite": 130,
+            "tipo_tramite": 120,
+            "tiempo_entre_llegadas": 160,
+            "proxima_llegada": 140,
+            "rnd_post_prestamo": 150,
+            "post_prestamo": 140,
+            "rnd_tiempo_lectura": 160,
+            "tiempo_lectura": 140,
+            "proximo_fin_lectura": 170,
+            "rnd_atencion": 130,
+            "tiempo_atencion": 140,
+            "fin_atencion(1)": 140,
+            "fin_atencion(2)": 140,
+            "empleado(1)_estado": 160,
+            "empleado(2)_estado": 160,
+            "cola": 80,
+            "cantidad_personas": 150,
+            "estado_biblioteca": 150,
+            "personas_retiradas": 160,
+            "promedio_permanencia": 190,
+            "ac_ocio_empleado_1": 180,
+            "ac_ocio_empleado_2": 180,
+        }
+
+        for columna in df.columns:
+            self.tabla.heading(columna, text=columna)
+            ancho = anchos_columnas.get(columna, 150)
+            self.tabla.column(columna, width=ancho, anchor="center", stretch=False)
+
+        for _, fila in df.iterrows():
+            valores = [fila[columna] for columna in df.columns]
+            self.tabla.insert("", "end", values=valores)
+
+    def mostrar_resultados(self, resultados):
         texto = (
-            f"Personas retiradas: {simulador.cant_personas_retiradas} | "
-            f"Promedio permanencia: {promedio_permanencia:.2f} min | "
-            f"AC ocio empleado 1: {simulador.empleado_1.tiempo_ocioso_acumulado:.2f} min | "
-            f"AC ocio empleado 2: {simulador.empleado_2.tiempo_ocioso_acumulado:.2f} min"
+            f"Personas retiradas: {resultados['personas_retiradas']} | "
+            f"Promedio permanencia: {resultados['promedio_permanencia']} min | "
+            f"Ocio Emp. 1: {resultados['tiempo_ocioso_empleado_1']} min "
+            f"({resultados['porcentaje_ocio_empleado_1']}%) | "
+            f"Ocio Emp. 2: {resultados['tiempo_ocioso_empleado_2']} min "
+            f"({resultados['porcentaje_ocio_empleado_2']}%)"
         )
 
         self.lbl_resultados.config(text=texto)
+
+    def exportar_excel(self):
+        if self.df_vector_completo.empty:
+            messagebox.showwarning("Sin datos", "Primero ejecutá una simulación.")
+            return
+
+        ruta = exportar_a_excel(
+            df_mostrado=self.df_vector_mostrado,
+            df_completo=self.df_vector_completo,
+            resultados=self.ultimo_resultado,
+            ruta_salida="output/vector_estado.xlsx"
+        )
+
+        messagebox.showinfo("Exportación correcta", f"Archivo generado:\n{ruta}")

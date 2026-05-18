@@ -13,7 +13,7 @@ from parametros import PARAMETROS_DEFAULT
 class SimuladorBiblioteca:
     def __init__(self, parametros=None):
         if parametros is None:
-            parametros = PARAMETROS_DEFAULT
+            parametros = PARAMETROS_DEFAULT.copy()
 
         self.parametros = parametros
 
@@ -167,6 +167,12 @@ class SimuladorBiblioteca:
             self.acum_permanencia += permanencia
             self.cant_personas_retiradas += 1
 
+    def obtener_personas_activas(self):
+        return [
+            persona for persona in self.personas
+            if persona.estado != "retirada"
+        ]
+
     def registrar_fila(
         self,
         evento,
@@ -192,16 +198,7 @@ class SimuladorBiblioteca:
         if self.cant_personas_retiradas > 0:
             promedio_permanencia = self.acum_permanencia / self.cant_personas_retiradas
 
-        personas_activas = [
-            persona for persona in self.personas
-            if persona.estado != "retirada"
-        ]
-
-        persona_1 = personas_activas[0] if len(personas_activas) > 0 else None
-        persona_2 = personas_activas[1] if len(personas_activas) > 1 else None
-
         fila_estado = {
-            # Identificación
             "fila": numero_fila,
             "evento": evento,
             "reloj": round(self.hora_actual, 2),
@@ -216,25 +213,29 @@ class SimuladorBiblioteca:
             ),
             "proxima_llegada": round(self.proxima_llegada, 2) if self.proxima_llegada is not None else "-",
 
-            # Eventos - Fin_atencion(i)
-            "rnd_atencion": round(rnd_tiempo, 4) if rnd_tiempo is not None else "-",
-            "tiempo_atencion": round(tiempo_atencion, 2) if tiempo_atencion is not None else "-",
-            "fin_atencion(1)": round(self.fin_atencion_emp_1, 2) if self.fin_atencion_emp_1 is not None else "-",
-            "fin_atencion(2)": round(self.fin_atencion_emp_2, 2) if self.fin_atencion_emp_2 is not None else "-",
-
-            # Evento - Fin lectura
+            # Eventos - Fin lectura
+            "rnd_post_prestamo": round(rnd_decision, 4) if rnd_decision is not None else "-",
+            "post_prestamo": decision_post_prestamo if decision_post_prestamo is not None else "-",
+            "rnd_tiempo_lectura": round(rnd_lectura, 4) if rnd_lectura is not None else "-",
+            "tiempo_lectura": round(tiempo_lectura, 2) if tiempo_lectura is not None else "-",
             "proximo_fin_lectura": (
                 round(hora_proximo_fin_lectura, 2)
                 if hora_proximo_fin_lectura is not None
                 else "-"
             ),
 
+            # Eventos - Fin_atencion(i)
+            "rnd_atencion": round(rnd_tiempo, 4) if rnd_tiempo is not None else "-",
+            "tiempo_atencion": round(tiempo_atencion, 2) if tiempo_atencion is not None else "-",
+            "fin_atencion(1)": round(self.fin_atencion_emp_1, 2) if self.fin_atencion_emp_1 is not None else "-",
+            "fin_atencion(2)": round(self.fin_atencion_emp_2, 2) if self.fin_atencion_emp_2 is not None else "-",
+
             # Objetos permanentes - Empleado(N)
             "empleado(1)_estado": self.obtener_estado_empleado(self.empleado_1),
             "empleado(2)_estado": self.obtener_estado_empleado(self.empleado_2),
             "cola": len(self.cola),
 
-            # Objetos permanentes - Biblioteca
+            # Biblioteca
             "cantidad_personas": self.personas_dentro,
             "estado_biblioteca": self.obtener_estado_biblioteca(),
 
@@ -243,27 +244,27 @@ class SimuladorBiblioteca:
             "promedio_permanencia": round(promedio_permanencia, 2),
             "ac_ocio_empleado_1": round(self.empleado_1.tiempo_ocioso_acumulado, 2),
             "ac_ocio_empleado_2": round(self.empleado_2.tiempo_ocioso_acumulado, 2),
-
-            # Objetos temporales - Personas
-            "persona(1)_estado": persona_1.estado if persona_1 is not None else "-",
-            "persona(1)_hora_inicio": self.obtener_hora_inicio_persona(persona_1),
-            "persona(2)_estado": persona_2.estado if persona_2 is not None else "-",
-            "persona(2)_hora_inicio": self.obtener_hora_inicio_persona(persona_2),
-
-            # Variables aleatorias adicionales
-            "rnd_decision_post_prestamo": round(rnd_decision, 4) if rnd_decision is not None else "-",
-            "decision_post_prestamo": decision_post_prestamo if decision_post_prestamo is not None else "-",
-            "rnd_tiempo_lectura": round(rnd_lectura, 4) if rnd_lectura is not None else "-",
-            "tiempo_lectura": round(tiempo_lectura, 2) if tiempo_lectura is not None else "-",
         }
+
+        personas_activas = self.obtener_personas_activas()
+
+        for indice in range(1, self.capacidad_maxima + 1):
+            persona = personas_activas[indice - 1] if indice <= len(personas_activas) else None
+
+            fila_estado[f"persona({indice})_estado"] = (
+                persona.estado if persona is not None else "-"
+            )
+            fila_estado[f"persona({indice})_hora_inicio"] = (
+                self.obtener_hora_inicio_persona(persona)
+            )
 
         self.vector_estado.append(fila_estado)
 
     def procesar_llegada(self):
         rnd_tipo = None
+        tipo_tramite = None
         rnd_tiempo = None
         tiempo_atencion = None
-        tipo_tramite = None
 
         if self.personas_dentro >= self.capacidad_maxima:
             self.proxima_llegada = (
@@ -393,6 +394,14 @@ class SimuladorBiblioteca:
             tiempo_atencion=tiempo_atencion
         )
 
+    def cerrar_simulacion(self):
+        self.hora_actual = self.tiempo_maximo
+
+        self.empleado_1.cerrar_ocio_final(self.tiempo_maximo)
+        self.empleado_2.cerrar_ocio_final(self.tiempo_maximo)
+
+        self.registrar_fila(evento="Fin simulacion")
+
     def simular(self):
         iteraciones = 0
         max_iteraciones = self.parametros["max_iteraciones"]
@@ -420,5 +429,7 @@ class SimuladorBiblioteca:
                 self.procesar_fin_lectura()
 
             iteraciones += 1
+
+        self.cerrar_simulacion()
 
         return self.vector_estado

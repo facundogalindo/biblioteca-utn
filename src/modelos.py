@@ -18,12 +18,13 @@ class Persona:
 
     hora_salida: Optional[float] = None
 
-    def calcular_permanencia(self) -> Optional[float]:
+    def calcular_permanencia(self):
         if self.hora_salida is None:
             return None
 
         return self.hora_salida - self.hora_llegada
-    
+
+
 @dataclass
 class Empleado:
     id_empleado: int
@@ -36,10 +37,12 @@ class Empleado:
     tiempo_ocioso_acumulado: float = 0.0
     ultima_hora_libre: float = 0.0
 
-    def esta_libre(self) -> bool:
+    def esta_libre(self):
         return self.estado == "libre"
 
-    def comenzar_atencion(self, persona: Persona, tipo_atencion: str, hora_actual: float):
+    def comenzar_atencion(self, persona, tipo_atencion, hora_actual):
+        self.tiempo_ocioso_acumulado += hora_actual - self.ultima_hora_libre
+
         self.estado = "ocupado"
         self.persona_actual = persona
         self.tipo_atencion = tipo_atencion
@@ -48,9 +51,7 @@ class Empleado:
         persona.estado = "siendo_atendida"
         persona.hora_inicio_atencion = hora_actual
 
-        self.tiempo_ocioso_acumulado += hora_actual - self.ultima_hora_libre
-
-    def finalizar_atencion(self, hora_actual: float) -> Optional[Persona]:
+    def finalizar_atencion(self, hora_actual):
         persona = self.persona_actual
 
         if persona is not None:
@@ -63,3 +64,8 @@ class Empleado:
         self.ultima_hora_libre = hora_actual
 
         return persona
+
+    def cerrar_ocio_final(self, hora_final):
+        if self.esta_libre():
+            self.tiempo_ocioso_acumulado += hora_final - self.ultima_hora_libre
+            self.ultima_hora_libre = hora_final
