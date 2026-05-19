@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+
 import pandas as pd
+from tksheet import Sheet
 
 from simulador import SimuladorBiblioteca
 from parametros import PARAMETROS_DEFAULT
@@ -11,7 +13,7 @@ class InterfazBiblioteca:
     def __init__(self, root):
         self.root = root
         self.root.title("TP4 - Simulación Biblioteca UTN")
-        self.root.geometry("1450x780")
+        self.root.geometry("1500x800")
 
         self.df_vector_completo = pd.DataFrame()
         self.df_vector_mostrado = pd.DataFrame()
@@ -58,19 +60,26 @@ class InterfazBiblioteca:
         frame_tabla = ttk.LabelFrame(frame_principal, text="Vector de estado")
         frame_tabla.pack(fill="both", expand=True, padx=10, pady=10)
 
-        self.tabla = ttk.Treeview(frame_tabla, show="headings")
+        self.sheet = Sheet(
+            frame_tabla,
+            show_x_scrollbar=True,
+            show_y_scrollbar=True,
+            width=1450,
+            height=430
+        )
 
-        scroll_y = ttk.Scrollbar(frame_tabla, orient="vertical", command=self.tabla.yview)
-        scroll_x = ttk.Scrollbar(frame_tabla, orient="horizontal", command=self.tabla.xview)
+        self.sheet.enable_bindings(
+            "single_select",
+            "row_select",
+            "column_select",
+            "drag_select",
+            "arrowkeys",
+            "right_click_popup_menu",
+            "rc_select",
+            "copy",
+        )
 
-        self.tabla.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
-
-        self.tabla.grid(row=0, column=0, sticky="nsew")
-        scroll_y.grid(row=0, column=1, sticky="ns")
-        scroll_x.grid(row=1, column=0, sticky="ew")
-
-        frame_tabla.rowconfigure(0, weight=1)
-        frame_tabla.columnconfigure(0, weight=1)
+        self.sheet.pack(fill="both", expand=True)
 
     def crear_inputs_parametros(self, frame):
         campos = [
@@ -187,7 +196,10 @@ class InterfazBiblioteca:
             vector_estado = simulador.simular()
 
             self.df_vector_completo = pd.DataFrame(vector_estado)
-            self.df_vector_mostrado = self.filtrar_vector_estado(self.df_vector_completo, parametros)
+            self.df_vector_mostrado = self.filtrar_vector_estado(
+                self.df_vector_completo,
+                parametros
+            )
 
             self.ultimo_resultado = self.calcular_resultados(simulador, parametros)
 
@@ -207,7 +219,6 @@ class InterfazBiblioteca:
             return df
 
         df_filtrado = df[df["reloj"] >= hora_desde].head(cantidad)
-
         ultima_fila = df.tail(1)
 
         if not ultima_fila.empty:
@@ -229,8 +240,12 @@ class InterfazBiblioteca:
         porcentaje_ocio_emp_2 = 0
 
         if tiempo_total > 0:
-            porcentaje_ocio_emp_1 = simulador.empleado_1.tiempo_ocioso_acumulado / tiempo_total * 100
-            porcentaje_ocio_emp_2 = simulador.empleado_2.tiempo_ocioso_acumulado / tiempo_total * 100
+            porcentaje_ocio_emp_1 = (
+                simulador.empleado_1.tiempo_ocioso_acumulado / tiempo_total * 100
+            )
+            porcentaje_ocio_emp_2 = (
+                simulador.empleado_2.tiempo_ocioso_acumulado / tiempo_total * 100
+            )
 
         return {
             "personas_retiradas": simulador.cant_personas_retiradas,
@@ -242,45 +257,115 @@ class InterfazBiblioteca:
         }
 
     def cargar_tabla(self, df):
-        self.tabla.delete(*self.tabla.get_children())
-        self.tabla["columns"] = list(df.columns)
+        if df.empty:
+            self.sheet.set_sheet_data([])
+            self.sheet.headers([])
+            return
 
-        anchos_columnas = {
+        columnas = list(df.columns)
+        datos = df.astype(str).values.tolist()
+
+        self.sheet.set_sheet_data(datos)
+        self.sheet.headers(columnas)
+
+        for indice, columna in enumerate(columnas):
+            ancho = self.obtener_ancho_columna(columna)
+            self.sheet.column_width(column=indice, width=ancho)
+
+        self.aplicar_colores_columnas(columnas)
+
+        self.sheet.refresh()
+
+    def obtener_ancho_columna(self, columna):
+        anchos = {
             "fila": 60,
-            "evento": 220,
-            "reloj": 80,
-            "rnd_tipo_tramite": 130,
-            "tipo_tramite": 120,
-            "tiempo_entre_llegadas": 160,
-            "proxima_llegada": 140,
-            "rnd_post_prestamo": 150,
-            "post_prestamo": 140,
-            "rnd_tiempo_lectura": 160,
-            "tiempo_lectura": 140,
-            "proximo_fin_lectura": 170,
-            "rnd_atencion": 130,
-            "tiempo_atencion": 140,
-            "fin_atencion(1)": 140,
-            "fin_atencion(2)": 140,
-            "empleado(1)_estado": 160,
-            "empleado(2)_estado": 160,
-            "cola": 80,
-            "cantidad_personas": 150,
-            "estado_biblioteca": 150,
-            "personas_retiradas": 160,
-            "promedio_permanencia": 190,
-            "ac_ocio_empleado_1": 180,
-            "ac_ocio_empleado_2": 180,
+            "evento": 210,
+            "reloj": 70,
+
+            "rnd_tipo_tramite": 120,
+            "tipo_tramite": 110,
+            "tiempo_entre_llegadas": 145,
+            "proxima_llegada": 130,
+
+            "rnd_atencion": 115,
+            "tiempo_atencion": 130,
+            "fin_atencion(1)": 130,
+            "fin_atencion(2)": 130,
+
+            "rnd_post_prestamo": 140,
+            "post_prestamo": 120,
+            "rnd_tiempo_lectura": 150,
+            "tiempo_lectura": 130,
+            "proximo_fin_lectura": 150,
+
+            "empleado(1)_estado": 140,
+            "empleado(2)_estado": 140,
+            "cola": 70,
+
+            "cantidad_personas": 140,
+            "estado_biblioteca": 140,
+
+            "personas_retiradas": 145,
+            "promedio_permanencia": 165,
+            "ac_ocio_empleado_1": 160,
+            "ac_ocio_empleado_2": 160,
         }
 
-        for columna in df.columns:
-            self.tabla.heading(columna, text=columna)
-            ancho = anchos_columnas.get(columna, 150)
-            self.tabla.column(columna, width=ancho, anchor="center", stretch=False)
+        if columna.startswith("persona("):
+            return 135
 
-        for _, fila in df.iterrows():
-            valores = [fila[columna] for columna in df.columns]
-            self.tabla.insert("", "end", values=valores)
+        return anchos.get(columna, 120)
+
+    def aplicar_colores_columnas(self, columnas):
+        for indice, columna in enumerate(columnas):
+            color = "#FFFFFF"
+
+            if columna in ["fila", "evento", "reloj"]:
+                color = "#EDEDED"
+
+            elif columna in [
+                "rnd_tipo_tramite",
+                "tipo_tramite",
+                "tiempo_entre_llegadas",
+                "proxima_llegada",
+                "rnd_atencion",
+                "tiempo_atencion",
+                "fin_atencion(1)",
+                "fin_atencion(2)",
+                "rnd_post_prestamo",
+                "post_prestamo",
+                "rnd_tiempo_lectura",
+                "tiempo_lectura",
+                "proximo_fin_lectura",
+            ]:
+                color = "#D9EAF7"
+
+            elif columna in [
+                "empleado(1)_estado",
+                "empleado(2)_estado",
+                "cola",
+                "cantidad_personas",
+                "estado_biblioteca",
+            ]:
+                color = "#DDEBF7"
+
+            elif columna in [
+                "personas_retiradas",
+                "promedio_permanencia",
+                "ac_ocio_empleado_1",
+                "ac_ocio_empleado_2",
+            ]:
+                color = "#FCE4D6"
+
+            elif columna.startswith("persona("):
+                color = "#D9EAD3"
+
+            self.sheet.highlight_columns(
+                columns=[indice],
+                bg=color,
+                fg="black",
+                redraw=False
+            )
 
     def mostrar_resultados(self, resultados):
         texto = (

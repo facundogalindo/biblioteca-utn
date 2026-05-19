@@ -29,7 +29,10 @@ class SimuladorBiblioteca:
         self.personas = []
         self.contador_personas = 0
 
-        self.proxima_llegada = 0
+        # Inicialización:
+        # si el tiempo entre llegadas es 4, la primera llegada ocurre en reloj 4.
+        self.proxima_llegada = parametros["tiempo_entre_llegadas"]
+
         self.fin_atencion_emp_1 = None
         self.fin_atencion_emp_2 = None
 
@@ -42,6 +45,14 @@ class SimuladorBiblioteca:
 
         self.acum_permanencia = 0.0
         self.cant_personas_retiradas = 0
+
+    def obtener_ocio_actual_empleado(self, empleado):
+        if empleado.esta_libre():
+            return empleado.tiempo_ocioso_acumulado + (
+                self.hora_actual - empleado.ultima_hora_libre
+            )
+
+        return empleado.tiempo_ocioso_acumulado
 
     def obtener_estado_biblioteca(self):
         if self.personas_dentro >= self.capacidad_maxima:
@@ -67,25 +78,7 @@ class SimuladorBiblioteca:
         if persona is None:
             return "-"
 
-        if persona.estado == "esperando":
-            return round(persona.hora_llegada, 2)
-
-        if persona.estado == "siendo_atendida":
-            if persona.hora_inicio_atencion is not None:
-                return round(persona.hora_inicio_atencion, 2)
-            return "-"
-
-        if persona.estado == "leyendo":
-            if persona.hora_inicio_lectura is not None:
-                return round(persona.hora_inicio_lectura, 2)
-            return "-"
-
-        if persona.estado == "esperando_devolucion":
-            if persona.hora_fin_lectura is not None:
-                return round(persona.hora_fin_lectura, 2)
-            return "-"
-
-        return "-"
+        return round(persona.hora_llegada, 2)
 
     def buscar_empleado_libre(self):
         if self.empleado_1.esta_libre():
@@ -167,11 +160,11 @@ class SimuladorBiblioteca:
             self.acum_permanencia += permanencia
             self.cant_personas_retiradas += 1
 
-    def obtener_personas_activas(self):
-        return [
-            persona for persona in self.personas
-            if persona.estado != "retirada"
-        ]
+    def obtener_personas_por_id(self):
+        return {
+            persona.id_persona: persona
+            for persona in self.personas
+        }
 
     def registrar_fila(
         self,
@@ -208,12 +201,18 @@ class SimuladorBiblioteca:
             "tipo_tramite": tipo_tramite if tipo_tramite is not None else "-",
             "tiempo_entre_llegadas": (
                 self.parametros["tiempo_entre_llegadas"]
-                if evento in ["Inicialización", "llegada_persona", "llegada_rechazada_biblioteca_cerrada"]
+                if evento == "Inicialización" or evento.startswith("llegada_persona")
                 else "-"
             ),
             "proxima_llegada": round(self.proxima_llegada, 2) if self.proxima_llegada is not None else "-",
 
-            # Eventos - Fin lectura
+            # Eventos - Fin_atencion(i)
+            "rnd_atencion": round(rnd_tiempo, 4) if rnd_tiempo is not None else "-",
+            "tiempo_atencion": round(tiempo_atencion, 2) if tiempo_atencion is not None else "-",
+            "fin_atencion(1)": round(self.fin_atencion_emp_1, 2) if self.fin_atencion_emp_1 is not None else "-",
+            "fin_atencion(2)": round(self.fin_atencion_emp_2, 2) if self.fin_atencion_emp_2 is not None else "-",
+
+            # Eventos - fin_lectura
             "rnd_post_prestamo": round(rnd_decision, 4) if rnd_decision is not None else "-",
             "post_prestamo": decision_post_prestamo if decision_post_prestamo is not None else "-",
             "rnd_tiempo_lectura": round(rnd_lectura, 4) if rnd_lectura is not None else "-",
@@ -224,39 +223,33 @@ class SimuladorBiblioteca:
                 else "-"
             ),
 
-            # Eventos - Fin_atencion(i)
-            "rnd_atencion": round(rnd_tiempo, 4) if rnd_tiempo is not None else "-",
-            "tiempo_atencion": round(tiempo_atencion, 2) if tiempo_atencion is not None else "-",
-            "fin_atencion(1)": round(self.fin_atencion_emp_1, 2) if self.fin_atencion_emp_1 is not None else "-",
-            "fin_atencion(2)": round(self.fin_atencion_emp_2, 2) if self.fin_atencion_emp_2 is not None else "-",
-
             # Objetos permanentes - Empleado(N)
             "empleado(1)_estado": self.obtener_estado_empleado(self.empleado_1),
             "empleado(2)_estado": self.obtener_estado_empleado(self.empleado_2),
             "cola": len(self.cola),
 
-            # Biblioteca
+            # Objetos permanentes - Biblioteca
             "cantidad_personas": self.personas_dentro,
             "estado_biblioteca": self.obtener_estado_biblioteca(),
 
             # Variables estadísticas
             "personas_retiradas": self.cant_personas_retiradas,
             "promedio_permanencia": round(promedio_permanencia, 2),
-            "ac_ocio_empleado_1": round(self.empleado_1.tiempo_ocioso_acumulado, 2),
-            "ac_ocio_empleado_2": round(self.empleado_2.tiempo_ocioso_acumulado, 2),
+            "ac_ocio_empleado_1": round(self.obtener_ocio_actual_empleado(self.empleado_1), 2),
+            "ac_ocio_empleado_2": round(self.obtener_ocio_actual_empleado(self.empleado_2), 2),
         }
 
-        personas_activas = self.obtener_personas_activas()
+        personas_por_id = self.obtener_personas_por_id()
 
-        for indice in range(1, self.capacidad_maxima + 1):
-            persona = personas_activas[indice - 1] if indice <= len(personas_activas) else None
+        for indice in range(1, self.contador_personas + 1):
+            persona = personas_por_id.get(indice)
 
-            fila_estado[f"persona({indice})_estado"] = (
-                persona.estado if persona is not None else "-"
-            )
-            fila_estado[f"persona({indice})_hora_inicio"] = (
-                self.obtener_hora_inicio_persona(persona)
-            )
+            if persona is not None and persona.estado != "retirada":
+                fila_estado[f"persona({indice})_estado"] = persona.estado
+                fila_estado[f"persona({indice})_hora_inicio"] = self.obtener_hora_inicio_persona(persona)
+            else:
+                fila_estado[f"persona({indice})_estado"] = "-"
+                fila_estado[f"persona({indice})_hora_inicio"] = "-"
 
         self.vector_estado.append(fila_estado)
 
@@ -266,17 +259,20 @@ class SimuladorBiblioteca:
         rnd_tiempo = None
         tiempo_atencion = None
 
+        # Si la biblioteca está llena, la llegada ocurre,
+        # pero la persona no ingresa.
+        # No se sortea trámite, no se crea objeto temporal y no se agrega a cola.
         if self.personas_dentro >= self.capacidad_maxima:
             self.proxima_llegada = (
                 self.hora_actual + self.parametros["tiempo_entre_llegadas"]
             )
 
             self.registrar_fila(
-                evento="llegada_rechazada_biblioteca_cerrada",
-                rnd_tipo=rnd_tipo,
-                tipo_tramite=tipo_tramite,
-                rnd_tiempo=rnd_tiempo,
-                tiempo_atencion=tiempo_atencion
+                evento="llegada_persona",
+                rnd_tipo=None,
+                tipo_tramite=None,
+                rnd_tiempo=None,
+                tiempo_atencion=None
             )
             return
 
@@ -305,7 +301,7 @@ class SimuladorBiblioteca:
         )
 
         self.registrar_fila(
-            evento="llegada_persona",
+            evento=f"llegada_persona cli_{persona.id_persona}",
             rnd_tipo=rnd_tipo,
             tipo_tramite=tipo_tramite,
             rnd_tiempo=rnd_tiempo,
@@ -327,7 +323,7 @@ class SimuladorBiblioteca:
             tipo_finalizado = persona.tipo_tramite
 
             if tipo_finalizado == "prestamo":
-                nombre_evento = f"Fin atencion({empleado.id_empleado}) - prestamo"
+                nombre_evento = f"Fin atencion({empleado.id_empleado})_prestamo_cli_{persona.id_persona}"
 
                 rnd_decision, decision = generar_decision_post_prestamo(self.parametros)
 
@@ -346,11 +342,11 @@ class SimuladorBiblioteca:
                     })
 
             elif tipo_finalizado == "devolucion":
-                nombre_evento = f"Fin atencion({empleado.id_empleado}) - devolucion"
+                nombre_evento = f"Fin atencion({empleado.id_empleado})_devolucion_cli_{persona.id_persona}"
                 self.registrar_salida_persona(persona)
 
             elif tipo_finalizado == "consulta":
-                nombre_evento = f"Fin atencion({empleado.id_empleado}) - consulta"
+                nombre_evento = f"Fin atencion({empleado.id_empleado})_consulta_cli_{persona.id_persona}"
                 self.registrar_salida_persona(persona)
 
         rnd_tiempo = None
@@ -394,19 +390,25 @@ class SimuladorBiblioteca:
             tiempo_atencion=tiempo_atencion
         )
 
-    def cerrar_simulacion(self):
-        self.hora_actual = self.tiempo_maximo
+    def cerrar_simulacion(self, hora_final):
+        self.hora_actual = hora_final
 
-        self.empleado_1.cerrar_ocio_final(self.tiempo_maximo)
-        self.empleado_2.cerrar_ocio_final(self.tiempo_maximo)
+        self.empleado_1.cerrar_ocio_final(hora_final)
+        self.empleado_2.cerrar_ocio_final(hora_final)
 
         self.registrar_fila(evento="Fin simulacion")
-
+    def normalizar_columnas_objetos_temporales(self):
+        for fila in self.vector_estado:
+            for indice in range(1, self.contador_personas + 1):
+                fila.setdefault(f"persona({indice})_estado", "-")
+                fila.setdefault(f"persona({indice})_hora_inicio", "-")
     def simular(self):
         iteraciones = 0
         max_iteraciones = self.parametros["max_iteraciones"]
 
         self.registrar_fila(evento="Inicialización")
+
+        termino_por_iteraciones = False
 
         while self.hora_actual <= self.tiempo_maximo and iteraciones < max_iteraciones:
             evento, hora_evento = self.obtener_proximo_evento()
@@ -430,6 +432,16 @@ class SimuladorBiblioteca:
 
             iteraciones += 1
 
-        self.cerrar_simulacion()
+            if iteraciones >= max_iteraciones:
+                termino_por_iteraciones = True
+
+        if termino_por_iteraciones:
+            hora_final = self.hora_actual
+        else:
+            hora_final = self.tiempo_maximo
+
+        self.cerrar_simulacion(hora_final)
+
+        self.normalizar_columnas_objetos_temporales()
 
         return self.vector_estado
