@@ -114,11 +114,13 @@ def obtener_bloques(columnas):
         "Estadísticas",
         [
             "personas_retiradas",
+            "tiempo_transcurrido",
+            "cant_personas_promedio",
             "promedio_permanencia",
             "ac_ocio_empleado_1",
             "ac_ocio_empleado_2",
         ],
-        "FCE4D6"
+        "#FCE4D6"
     )
 
     columnas_personas = [col for col in columnas if col.startswith("persona(")]

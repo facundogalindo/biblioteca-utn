@@ -305,10 +305,12 @@ class InterfazBiblioteca:
             "cantidad_personas": 140,
             "estado_biblioteca": 140,
 
-            "personas_retiradas": 145,
-            "promedio_permanencia": 165,
-            "ac_ocio_empleado_1": 160,
-            "ac_ocio_empleado_2": 160,
+            "personas_retiradas": 160,
+            "tiempo_transcurrido": 160,
+            "cant_personas_promedio": 180,
+            "promedio_permanencia": 180,
+            "ac_ocio_empleado_1": 180,
+            "ac_ocio_empleado_2": 180,
         }
 
         if columna.startswith("persona("):
@@ -351,6 +353,8 @@ class InterfazBiblioteca:
 
             elif columna in [
                 "personas_retiradas",
+                "tiempo_transcurrido",
+                "cant_personas_promedio",
                 "promedio_permanencia",
                 "ac_ocio_empleado_1",
                 "ac_ocio_empleado_2",

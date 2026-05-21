@@ -46,6 +46,28 @@ class SimuladorBiblioteca:
         self.acum_permanencia = 0.0
         self.cant_personas_retiradas = 0
 
+    def calcular_promedio_permanencia_actual(self):
+        personas_activas = [
+            persona for persona in self.personas
+            if persona.estado != "retirada"
+        ]
+
+        permanencia_activos = 0.0
+
+        for persona in personas_activas:
+            permanencia_activos += self.hora_actual - persona.hora_llegada
+
+        total_permanencia = self.acum_permanencia + permanencia_activos
+
+        cantidad_personas_consideradas = (
+            self.cant_personas_retiradas + len(personas_activas)
+        )
+
+        if cantidad_personas_consideradas == 0:
+            return 0
+
+        return total_permanencia / cantidad_personas_consideradas
+
     def obtener_ocio_actual_empleado(self, empleado):
         if empleado.esta_libre():
             return empleado.tiempo_ocioso_acumulado + (
@@ -165,6 +187,27 @@ class SimuladorBiblioteca:
             persona.id_persona: persona
             for persona in self.personas
         }
+    def calcular_metricas_permanencia_actual(self):
+        personas_activas = [
+            persona for persona in self.personas
+            if persona.estado != "retirada"
+        ]
+
+        permanencia_personas_activas = 0.0
+
+        for persona in personas_activas:
+            permanencia_personas_activas += self.hora_actual - persona.hora_llegada
+
+        tiempo_transcurrido = self.acum_permanencia + permanencia_personas_activas
+
+        cant_personas_promedio = self.cant_personas_retiradas + len(personas_activas)
+
+        if cant_personas_promedio == 0:
+            promedio_permanencia = 0
+        else:
+            promedio_permanencia = tiempo_transcurrido / cant_personas_promedio
+
+        return tiempo_transcurrido, cant_personas_promedio, promedio_permanencia
 
     def registrar_fila(
         self,
@@ -187,9 +230,9 @@ class SimuladorBiblioteca:
         proximo_fin_lectura = self.obtener_proximo_fin_lectura()
         hora_proximo_fin_lectura = proximo_fin_lectura["hora"] if proximo_fin_lectura else None
 
-        promedio_permanencia = 0
-        if self.cant_personas_retiradas > 0:
-            promedio_permanencia = self.acum_permanencia / self.cant_personas_retiradas
+        tiempo_transcurrido, cant_personas_promedio, promedio_permanencia = (
+            self.calcular_metricas_permanencia_actual()
+        )
 
         fila_estado = {
             "fila": numero_fila,
@@ -233,11 +276,14 @@ class SimuladorBiblioteca:
             "estado_biblioteca": self.obtener_estado_biblioteca(),
 
             # Variables estadísticas
+# Variables estadísticas
             "personas_retiradas": self.cant_personas_retiradas,
+            "tiempo_transcurrido": round(tiempo_transcurrido, 2),
+            "cant_personas_promedio": cant_personas_promedio,
             "promedio_permanencia": round(promedio_permanencia, 2),
             "ac_ocio_empleado_1": round(self.obtener_ocio_actual_empleado(self.empleado_1), 2),
             "ac_ocio_empleado_2": round(self.obtener_ocio_actual_empleado(self.empleado_2), 2),
-        }
+            }
 
         personas_por_id = self.obtener_personas_por_id()
 
