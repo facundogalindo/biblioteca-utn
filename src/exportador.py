@@ -5,6 +5,28 @@ from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
 
+def color_argb(color_hex):
+    """
+    openpyxl requiere colores en formato aRGB.
+    Ejemplo:
+    FCE4D6 -> FFFCE4D6
+    """
+    if color_hex.startswith("#"):
+        color_hex = color_hex[1:]
+
+    if len(color_hex) == 6:
+        return f"FF{color_hex}"
+
+    return color_hex
+
+
+def crear_fill(color_hex):
+    return PatternFill(
+        fill_type="solid",
+        fgColor=color_argb(color_hex)
+    )
+
+
 def exportar_a_excel(
     df_mostrado,
     df_completo,
@@ -36,6 +58,7 @@ def obtener_bloques(columnas):
 
     def agregar(nombre_general, nombre_sub, columnas_bloque, color):
         columnas_existentes = [col for col in columnas_bloque if col in columnas]
+
         if columnas_existentes:
             bloques.append({
                 "general": nombre_general,
@@ -113,14 +136,13 @@ def obtener_bloques(columnas):
         "Variables estadísticas",
         "Estadísticas",
         [
-            "personas_retiradas",
             "tiempo_transcurrido",
             "cant_personas_promedio",
             "promedio_permanencia",
             "ac_ocio_empleado_1",
             "ac_ocio_empleado_2",
         ],
-        "#FCE4D6"
+        "FCE4D6"
     )
 
     columnas_personas = [col for col in columnas if col.startswith("persona(")]
@@ -151,7 +173,7 @@ def escribir_vector_con_formato(ws, df):
         inicio = col_index
         fin = col_index + len(bloque["columnas"]) - 1
 
-        fill = PatternFill("solid", fgColor=bloque["color"])
+        fill = crear_fill(bloque["color"])
 
         if inicio != fin:
             ws.merge_cells(
@@ -215,10 +237,12 @@ def escribir_vector_con_formato(ws, df):
             if value is not None:
                 max_len = max(max_len, len(str(value)))
 
-        ancho = min(max_len + 2, 28)
-
-        if columna.startswith("persona("):
+        if columna == "evento":
+            ancho = 32
+        elif columna.startswith("persona("):
             ancho = 18
+        else:
+            ancho = min(max_len + 2, 28)
 
         ws.column_dimensions[get_column_letter(col_idx)].width = ancho
 

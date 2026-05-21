@@ -277,7 +277,7 @@ class SimuladorBiblioteca:
 
             # Variables estadísticas
 # Variables estadísticas
-            "personas_retiradas": self.cant_personas_retiradas,
+            #"personas_retiradas": self.cant_personas_retiradas,
             "tiempo_transcurrido": round(tiempo_transcurrido, 2),
             "cant_personas_promedio": cant_personas_promedio,
             "promedio_permanencia": round(promedio_permanencia, 2),

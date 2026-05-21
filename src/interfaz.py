@@ -248,7 +248,7 @@ class InterfazBiblioteca:
             )
 
         return {
-            "personas_retiradas": simulador.cant_personas_retiradas,
+            #"personas_retiradas": simulador.cant_personas_retiradas,
             "promedio_permanencia": round(promedio_permanencia, 2),
             "tiempo_ocioso_empleado_1": round(simulador.empleado_1.tiempo_ocioso_acumulado, 2),
             "tiempo_ocioso_empleado_2": round(simulador.empleado_2.tiempo_ocioso_acumulado, 2),
@@ -305,7 +305,7 @@ class InterfazBiblioteca:
             "cantidad_personas": 140,
             "estado_biblioteca": 140,
 
-            "personas_retiradas": 160,
+            #"personas_retiradas": 160,
             "tiempo_transcurrido": 160,
             "cant_personas_promedio": 180,
             "promedio_permanencia": 180,
@@ -352,7 +352,7 @@ class InterfazBiblioteca:
                 color = "#DDEBF7"
 
             elif columna in [
-                "personas_retiradas",
+                #"personas_retiradas",
                 "tiempo_transcurrido",
                 "cant_personas_promedio",
                 "promedio_permanencia",
@@ -373,7 +373,7 @@ class InterfazBiblioteca:
 
     def mostrar_resultados(self, resultados):
         texto = (
-            f"Personas retiradas: {resultados['personas_retiradas']} | "
+            #f"Personas retiradas: {resultados['personas_retiradas']} | "
             f"Promedio permanencia: {resultados['promedio_permanencia']} min | "
             f"Ocio Emp. 1: {resultados['tiempo_ocioso_empleado_1']} min "
             f"({resultados['porcentaje_ocio_empleado_1']}%) | "
