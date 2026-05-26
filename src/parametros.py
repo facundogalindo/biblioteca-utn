@@ -8,7 +8,7 @@ PARAMETROS_DEFAULT = {
     # Llegadas
     "tiempo_entre_llegadas": 4,
 
-    # Probabilidades de trámite
+    # Probabilidades de trámite inicial
     "prob_prestamo": 0.45,
     "prob_devolucion": 0.45,
     "prob_consulta": 0.10,

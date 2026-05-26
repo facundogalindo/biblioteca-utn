@@ -6,11 +6,6 @@ from openpyxl.utils import get_column_letter
 
 
 def color_argb(color_hex):
-    """
-    openpyxl requiere colores en formato aRGB.
-    Ejemplo:
-    FCE4D6 -> FFFCE4D6
-    """
     if color_hex.startswith("#"):
         color_hex = color_hex[1:]
 
@@ -145,12 +140,12 @@ def obtener_bloques(columnas):
         "FCE4D6"
     )
 
-    columnas_personas = [col for col in columnas if col.startswith("persona(")]
+    columnas_clientes = [col for col in columnas if col.startswith("cli(")]
 
     agregar(
         "Objetos temporales",
-        "Personas",
-        columnas_personas,
+        "Clientes",
+        columnas_clientes,
         "D9EAD3"
     )
 
@@ -239,7 +234,7 @@ def escribir_vector_con_formato(ws, df):
 
         if columna == "evento":
             ancho = 32
-        elif columna.startswith("persona("):
+        elif columna.startswith("cli("):
             ancho = 18
         else:
             ancho = min(max_len + 2, 28)
